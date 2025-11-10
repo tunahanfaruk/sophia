@@ -50,6 +50,12 @@ if you want to get more detail about sophia you can visit [Website of Sophia](ht
 |Proto PCB|
 |5A voltage regulator|
 |12AWG silicone wire|
+  #### 3D Models
+  * Geognesic dome
+  * Holder
+  * Holder v2
+  * mid
+  * PID tuneing platform
 
 ### Future Hardware Upgrades:
 * Jetson Nano (onboard ML inference)
@@ -58,7 +64,8 @@ if you want to get more detail about sophia you can visit [Website of Sophia](ht
 
 ### Software Stack
 * Flight Controller: C++ 
-* Machine Learning: PyTorch 
+* Machine Learning: PyTorch
+* FreeCAD
 
 ### Performance Metrics
 * Single loop execution: ~5 ms
