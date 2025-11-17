@@ -35,7 +35,7 @@ float roll=0, pitch=0, yaw=0;
 float x_fin_angle=0, y_fin_angle=0;
 float x_integral=0, y_integral=0;
 float x_previousError=0, y_previousError=0;
-float kp=0.0, ki=0.0, kd=0.0;
+float kp=2.0, ki=0.0, kd=0.0;
 float dt=0.001;
 float previousMillis=0;
 
@@ -49,7 +49,7 @@ float previousMillis=0;
 // ======== Motors ========
 Servo right, left, rightb, leftb;
 const int pinright=5, pinleft=2, pinrightb=13, pinleftb=14;
-float speed=1050, goal_speed=1050, smth=1;
+float speed=1050, goal_speed=1400, smth=1;
 
 
 
@@ -101,7 +101,7 @@ void setup() {
 
 
 
-
+/*
   // --- BMP ---
   Wire.begin(BMP_I2C_SDA, BMP_I2C_SCL);
   if(!bmp.begin_I2C()){ Serial.println("BMP not found!"); while(1); }
@@ -142,7 +142,7 @@ void setup() {
   calib = sum / 1000.0;
   Serial.print("BMP Calibration done: "); Serial.println(calib);
 
-
+*/
 
 
 
@@ -151,7 +151,7 @@ void setup() {
 
 
   // --- BNO ---
-  WireBNO.begin(21,22); 
+  WireBNO.begin(22,21); 
   if(!myIMU.begin(BNO08X_ADDR, WireBNO, BNO08X_INT, BNO08X_RST)){
     Serial.println("BNO08x not found!"); while(1);
   }
@@ -183,7 +183,7 @@ void setup() {
   delay(2000);
   
   right_speed(1000); left_speed(1000); rightb_speed(1000); leftb_speed(1000);
-  delay(2000);
+  delay(4000);
 
   currentMillis_cal = millis();
 }
@@ -199,7 +199,7 @@ float rl_alt = 0.0;
 
 // ======== Loop ========
 void loop() {
-  
+  delay(1);
 
   // --- Timing ---
   float currentMillis = millis() - currentMillis_cal;
@@ -232,18 +232,18 @@ void loop() {
 
 //smooth stopping
 
-/*
+
 
   if (time_started > 15.0){
 
     goal_speed = 1000;
 
   }
-*/
 
 
 
 
+/*
 
   // --- BMP Altitude ---
   float altitude=0.0, temperature=0.0, pressure=0.0;
@@ -271,7 +271,7 @@ void loop() {
 
   }
 
-
+*/
 
 
 
@@ -328,10 +328,10 @@ void loop() {
   if(goal_speed < speed) speed -= smth;
 
   // --- Motor Output ---
-  int rightPWM = (int)(speed+(+x_output+y_output)/2);
-  int leftPWM  = (int)(speed+(-x_output+y_output)/2);
-  int rightbPWM= (int)(speed+(+x_output-y_output)/2);
-  int leftbPWM = (int)(speed+(-x_output-y_output)/2);
+  int rightPWM = (int)(speed+(-x_output-y_output)/2);
+  int leftPWM  = (int)(speed+(+x_output-y_output)/2);
+  int rightbPWM= (int)(speed+(-x_output+y_output)/2);
+  int leftbPWM = (int)(speed+(+x_output+y_output)/2);
 
   right_speed(rightPWM);
   left_speed(leftPWM);
@@ -357,10 +357,13 @@ void loop() {
   Serial.print(" L: "); Serial.print(leftPWM);
   Serial.print(" Rb: "); Serial.print(rightbPWM);
   Serial.print(" Lb: "); Serial.println(leftbPWM);
-  Serial.println(dt);*/
-
-
   Serial.println(time_started);
+  */
+
+
+  
+
+  Serial.println(dt,3);
 
   //Serial.println("--------------------------------------------------");
 }
