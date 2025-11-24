@@ -217,8 +217,8 @@ void loop() {
   if(myIMU.wasReset()) setReports();
   if(myIMU.getSensorEvent()){
     if(myIMU.getSensorEventID()==SENSOR_REPORTID_ROTATION_VECTOR){
-      roll_raw  = myIMU.getRoll()  * 180.0/PI;
-      pitch_raw = myIMU.getPitch() * 180.0/PI;
+      roll_raw  = myIMU.getRoll()  * 180.0/PI -1.62;
+      pitch_raw = myIMU.getPitch() * 180.0/PI - 0.57;
       yaw_raw   = myIMU.getYaw()   * 180.0/PI;
     } else if(myIMU.getSensorEventID()==SENSOR_REPORTID_ACCELEROMETER){
       ax = myIMU.getAccelX();
@@ -235,8 +235,8 @@ void loop() {
 
 
   // --- Low-pass filter (simple exponential) ---
-  roll  = roll  * (1.0 - LPF_ALPHA) + roll_raw  * LPF_ALPHA;
-  pitch = pitch * (1.0 - LPF_ALPHA) + pitch_raw * LPF_ALPHA;
+  roll  = (roll  * (1.0 - LPF_ALPHA) + roll_raw  * LPF_ALPHA);
+  pitch = (pitch * (1.0 - LPF_ALPHA) + pitch_raw * LPF_ALPHA);
   yaw   = yaw   * (1.0 - LPF_ALPHA) + yaw_raw   * LPF_ALPHA;
 
 
@@ -308,11 +308,11 @@ void loop() {
 
 
   // Debug (isteğe bağlı)
-  Serial.println("dt: "); Serial.print(dt, 4);
-  /*Serial.print(" | R: "); Serial.print(roll,2);
+  Serial.print("dt: "); Serial.print(dt, 4);
+  Serial.print(" | R: "); Serial.print(roll,2);
   Serial.print(" P: "); Serial.print(pitch,2);
   Serial.print(" | outX: "); Serial.print(x_output,2);
   Serial.print(" outY: "); Serial.print(y_output,2);
   Serial.print(" | spd: "); Serial.print(speed);
-  Serial.print(" goal: "); Serial.println(goal_speed);*/
+  Serial.print(" goal: "); Serial.println(goal_speed);
 }
