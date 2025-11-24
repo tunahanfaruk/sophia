@@ -57,8 +57,8 @@ float x_fin_angle=0, y_fin_angle=0;
 // PID state
 float x_integral=0, y_integral=0;
 float x_previousError=0, y_previousError=0;
-float kp=2.7, ki=0.007, kd=0.5; 
-float dt=0.005;
+float kp=2.675, ki=0.12, kd=0.5; 
+float dt=0.0022;
 
 
 
@@ -78,7 +78,7 @@ const float INTEGRAL_LIMIT = 200.0;
 // ======== Motors ========
 Servo right, left, rightb, leftb;
 const int pinright=5, pinleft=2, pinrightb=13, pinleftb=14;
-float speed=1050, goal_speed=1400;
+float speed=1050, goal_speed=1350;
 float acc = 8.0;
 const int PWM_MIN = 1000;
 const int PWM_MAX = 2000;
@@ -202,7 +202,7 @@ void loop() {
 
 
   // smooth stop after 20s (örnek)
-  if (time_started > 20.0){
+  if (time_started > 60.0){
     goal_speed = 1000;
   }
 
@@ -308,11 +308,11 @@ void loop() {
 
 
   // Debug (isteğe bağlı)
-  Serial.print("dt: "); Serial.print(dt, 4);
+  /*Serial.print("dt: "); Serial.print(dt, 4);
   Serial.print(" | R: "); Serial.print(roll,2);
   Serial.print(" P: "); Serial.print(pitch,2);
   Serial.print(" | outX: "); Serial.print(x_output,2);
   Serial.print(" outY: "); Serial.print(y_output,2);
   Serial.print(" | spd: "); Serial.print(speed);
-  Serial.print(" goal: "); Serial.println(goal_speed);
+  Serial.print(" goal: "); Serial.println(goal_speed);*/
 }
