@@ -101,7 +101,6 @@ const unsigned long loopTimeMicros = 2200; // 5000us -> 200Hz
 
 
 
-// LPF alpha (0..1). Küçük alpha = daha fazla smoothing.
 const float LPF_ALPHA = 0.25;
 
 
@@ -117,10 +116,22 @@ void left_speed(int us){ left.writeMicroseconds(us); }
 void rightb_speed(int us){ rightb.writeMicroseconds(us); }
 void leftb_speed(int us){ leftb.writeMicroseconds(us); }
 
+
+
+
+
+
+
+
+
+
 void setReports(){
   if(myIMU.enableRotationVector()) Serial.println(F("Rotation vector enabled"));
   else Serial.println("Could not enable rotation vector");
 
+
+
+  
   if(myIMU.enableAccelerometer()) Serial.println(F("Accelerometer enabled"));
   else Serial.println("Could not enable accelerometer");
 }
@@ -132,35 +143,67 @@ void handleUART() {
   if (Serial.available()) {
     char cmd = Serial.read();
 
+
+
+    
+
     switch(cmd) {
       case 'w':
         goal_speed += 50;
         if (goal_speed > PWM_MAX) goal_speed = PWM_MAX;
         break;
 
+
+
+
+
+      
       case 's':
         goal_speed -= 50;
         if (goal_speed < PWM_MIN) goal_speed = PWM_MIN;
         break;
 
+
+
+
+
+      
       case 'a':
         x_fin_angle -= 3.0;
         break;
 
+
+
+
+      
       case 'd': 
         x_fin_angle += 3.0;
         break;
 
+
+
+
+      
       case 'q':
         y_fin_angle += 2.0;
         if (y_fin_angle > 30.0) y_fin_angle = 30.0;
         break;
 
+
+
+
+
+      
       case 'e':  // aşağı
         y_fin_angle -= 2.0;
         if (y_fin_angle < -30.0) y_fin_angle = -30.0;
         break;
 
+
+
+
+
+      
       case 'x':  // dur
         goal_speed = PWM_MIN;
         x_fin_angle = 0;
@@ -169,6 +212,9 @@ void handleUART() {
     }
   }
 }
+
+
+
 
 
 
@@ -185,7 +231,7 @@ void setup() {
 
 
 
-  // --- BNO (I2C ikinci hattı) ---
+  
   WireBNO.begin(22,21);
   WireBNO.setClock(400000); // 400kHz ile daha az gecikme
   if(!myIMU.begin(BNO08X_ADDR, WireBNO, BNO08X_INT, BNO08X_RST)){
@@ -211,7 +257,7 @@ void setup() {
 
 
 
-  // ESC calibration (sadeleştirilmiş) - yalnızca ilk kurulumda açıksa kullan
+  
   right_speed(PWM_MAX); left_speed(PWM_MAX); rightb_speed(PWM_MAX); leftb_speed(PWM_MAX);
   delay(1500);
   right_speed(PWM_MIN); left_speed(PWM_MIN); rightb_speed(PWM_MIN); leftb_speed(PWM_MIN);
@@ -244,9 +290,15 @@ void loop() {
 
 
 
+
+
+  
   handleUART();
 
 
+
+
+  
 
 
   // smooth stop after 20s (örnek)
@@ -258,6 +310,8 @@ void loop() {
 
 
 
+
+  
 
 
   // --- BNO Orientation & Accel (raw) ---
@@ -292,6 +346,9 @@ void loop() {
 
 
 
+  
+
+
 
   // --- PID Control (roll / pitch) ---
   float x_error = x_fin_angle - roll;
@@ -310,6 +367,10 @@ void loop() {
 
 
 
+  
+
+
+
   float y_error = y_fin_angle - pitch;
   y_integral += y_error * dt;
   if (y_integral > INTEGRAL_LIMIT) y_integral = INTEGRAL_LIMIT;
@@ -323,6 +384,9 @@ void loop() {
 
 
 
+  
+
+
 
   // --- smooth throttle ramp (acc) ---
   if (goal_speed > speed) speed += acc;
@@ -333,6 +397,9 @@ void loop() {
 
 
 
+
+
+  
 
 
 
@@ -355,7 +422,10 @@ void loop() {
 
 
 
-  // Debug (isteğe bağlı)
+  
+
+
+  
   /*Serial.print("dt: "); Serial.print(dt, 4);
   Serial.print(" | R: "); Serial.print(roll,2);
   Serial.print(" P: "); Serial.print(pitch,2);
