@@ -61,6 +61,10 @@ float kp=2.65, ki=0.145, kd=0.5;
 float dt=0.0022;
 
 
+float z_integral = 0;
+float z_previousError = 0;
+float z_kp = 1.0, z_ki = 0.1, z_kd = 0.3;
+float z_fin_angle = 0; 
 
 
 
@@ -194,7 +198,7 @@ void handleUART() {
 
 
       
-      case 'e':  // aşağı
+      case 'e': 
         y_fin_angle -= 2.0;
         if (y_fin_angle < -30.0) y_fin_angle = -30.0;
         break;
@@ -204,11 +208,28 @@ void handleUART() {
 
 
       
-      case 'x':  // dur
+      case 'x':
         goal_speed = PWM_MIN;
         x_fin_angle = 0;
         y_fin_angle = 0;
         break;
+
+
+
+      
+      case 'r': 
+        z_fin_angle += 3.0;
+        break;
+
+
+
+
+      
+      case 'f':
+        z_fin_angle -= 3.0;
+        break;
+
+      
     }
   }
 }
@@ -233,7 +254,7 @@ void setup() {
 
   
   WireBNO.begin(22,21);
-  WireBNO.setClock(400000); // 400kHz ile daha az gecikme
+  WireBNO.setClock(400000);
   if(!myIMU.begin(BNO08X_ADDR, WireBNO, BNO08X_INT, BNO08X_RST)){
     Serial.println("BNO08x not found!"); while(1);
   }
@@ -278,7 +299,7 @@ double time_started = 0.0;
 // ======== Loop ========
 void loop() {
   unsigned long nowMicros = micros();
-  if (nowMicros - lastLoopMicros < loopTimeMicros) return; // sabit döngü hızı
+  if (nowMicros - lastLoopMicros < loopTimeMicros) return;
   // hesapla dt güvenli
   unsigned long elapsed = nowMicros - lastLoopMicros;
   lastLoopMicros = nowMicros;
@@ -301,7 +322,7 @@ void loop() {
   
 
 
-  // smooth stop after 20s (örnek)
+  
   if (time_started > 20.0){
     goal_speed = 1000;
   }
@@ -384,6 +405,19 @@ void loop() {
 
 
 
+    // --- PID Control (yaw) ---
+  float z_error = z_fin_angle - yaw;
+  z_integral += z_error * dt;
+  if (z_integral > INTEGRAL_LIMIT) z_integral = INTEGRAL_LIMIT;
+  if (z_integral < -INTEGRAL_LIMIT) z_integral = -INTEGRAL_LIMIT;
+  float z_derivative = (z_error - z_previousError) / dt;
+  float z_output = z_kp * z_error + z_ki * z_integral + z_kd * z_derivative;
+  z_previousError = z_error;
+
+
+  
+
+
   
 
 
@@ -405,10 +439,11 @@ void loop() {
 
 
   // --- Motor mixing (X config) ---
-  int rightPWM  = (int)constrain(speed + (-x_output - y_output), PWM_MIN, PWM_MAX);
-  int leftPWM   = (int)constrain(speed + (+x_output - y_output), PWM_MIN, PWM_MAX);
-  int rightbPWM = (int)constrain(speed + (-x_output + y_output), PWM_MIN, PWM_MAX);
-  int leftbPWM  = (int)constrain(speed + (+x_output + y_output), PWM_MIN, PWM_MAX);
+  int rightPWM  = (int)constrain(speed + (-x_output - y_output - z_output), PWM_MIN, PWM_MAX);
+  int leftPWM   = (int)constrain(speed + (+x_output - y_output + z_output), PWM_MIN, PWM_MAX);
+  int rightbPWM = (int)constrain(speed + (-x_output + y_output - z_output), PWM_MIN, PWM_MAX);
+  int leftbPWM  = (int)constrain(speed + (+x_output + y_output + z_output), PWM_MIN, PWM_MAX);
+
 
   right_speed(rightPWM);
   left_speed(leftPWM);
