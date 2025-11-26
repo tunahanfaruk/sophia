@@ -11,13 +11,17 @@
 
 
 
+
 // ======== BMP390 ========
 #define SEALEVELPRESSURE_HPA (1013.25)
 #define BMP_I2C_SDA 19
 #define BMP_I2C_SCL 18
 Adafruit_BMP3XX bmp;
 double calib = 0.0;
-float loo = 0;
+float loo = 0.0;
+
+
+
 
 
 
@@ -37,9 +41,17 @@ BNO08x myIMU;
 
 
 
+
+
+
+
 // Raw + filtered angles
 float roll_raw=0, pitch_raw=0, yaw_raw=0;
 float roll=0, pitch=0, yaw=0;
+
+
+
+
 
 
 
@@ -54,11 +66,23 @@ float x_fin_angle=0, y_fin_angle=0;
 
 
 
+
+
+
+
 // PID state
 float x_integral=0, y_integral=0;
 float x_previousError=0, y_previousError=0;
 float kp=2.65, ki=0.145, kd=0.5; 
 float dt=0.0022;
+
+
+
+
+
+
+
+
 
 
 float z_integral = 0;
@@ -70,8 +94,30 @@ float z_fin_angle = 0;
 
 
 
-// integral limit (anti-windup)
+
+
+
+
+
+float h_integral = 0;
+float h_previousError = 0;
+float h_kp = 1.5, h_ki = 0.05, h_kd = 0.5;
+float goal_alt = 0; // hedef yükseklik cm
+float h_output = 0;
+
+
+
+
+
+
+
+
+
+
 const float INTEGRAL_LIMIT = 200.0;
+
+
+
 
 
 
@@ -87,16 +133,20 @@ float acc = 8.0;
 const int PWM_MIN = 1000;
 const int PWM_MAX = 2000;
 
+
+
+
+
+
+
+
+
+
 unsigned long currentMillis_cal = 0;
-
-
-
-
-
-
-// Loop timing (micros)
 unsigned long lastLoopMicros = 0;
-const unsigned long loopTimeMicros = 2200; // 5000us -> 200Hz
+const unsigned long loopTimeMicros = 2200;
+
+
 
 
 
@@ -106,6 +156,12 @@ const unsigned long loopTimeMicros = 2200; // 5000us -> 200Hz
 
 
 const float LPF_ALPHA = 0.25;
+
+// Altitude smoothing
+float alt_raw = 0, alt_filtered = 0;
+const float ALT_LPF_ALPHA = 0.2;
+
+
 
 
 
@@ -135,6 +191,7 @@ void setReports(){
 
 
 
+
   
   if(myIMU.enableAccelerometer()) Serial.println(F("Accelerometer enabled"));
   else Serial.println("Could not enable accelerometer");
@@ -143,93 +200,29 @@ void setReports(){
 
 
 
+
+
+
+
+
+
+
 void handleUART() {
   if (Serial.available()) {
     char cmd = Serial.read();
-
-
-
-    
-
     switch(cmd) {
-      case 'w':
-        goal_speed += 50;
-        if (goal_speed > PWM_MAX) goal_speed = PWM_MAX;
-        break;
+      case 'w': goal_speed += 50; if (goal_speed > PWM_MAX) goal_speed = PWM_MAX; break;
+      case 's': goal_speed -= 50; if (goal_speed < PWM_MIN) goal_speed = PWM_MIN; break;
+      case 'a': x_fin_angle -= 3.0; break;
+      case 'd': x_fin_angle += 3.0; break;
+      case 'q': y_fin_angle += 2.0; if(y_fin_angle>30)y_fin_angle=30; break;
+      case 'e': y_fin_angle -= 2.0; if(y_fin_angle<-30)y_fin_angle=-30; break;
+      case 'x': goal_speed = PWM_MIN; x_fin_angle=0; y_fin_angle=0; break;
+      case 'r': z_fin_angle += 3.0; break;
+      case 'f': z_fin_angle -= 3.0; break;
+      case 'i': goal_alt += 0.5; break;
+      case 'k': goal_alt -= 0.5; break;
 
-
-
-
-
-      
-      case 's':
-        goal_speed -= 50;
-        if (goal_speed < PWM_MIN) goal_speed = PWM_MIN;
-        break;
-
-
-
-
-
-      
-      case 'a':
-        x_fin_angle -= 3.0;
-        break;
-
-
-
-
-      
-      case 'd': 
-        x_fin_angle += 3.0;
-        break;
-
-
-
-
-      
-      case 'q':
-        y_fin_angle += 2.0;
-        if (y_fin_angle > 30.0) y_fin_angle = 30.0;
-        break;
-
-
-
-
-
-      
-      case 'e': 
-        y_fin_angle -= 2.0;
-        if (y_fin_angle < -30.0) y_fin_angle = -30.0;
-        break;
-
-
-
-
-
-      
-      case 'x':
-        goal_speed = PWM_MIN;
-        x_fin_angle = 0;
-        y_fin_angle = 0;
-        break;
-
-
-
-      
-      case 'r': 
-        z_fin_angle += 3.0;
-        break;
-
-
-
-
-      
-      case 'f':
-        z_fin_angle -= 3.0;
-        break;
-
-      
     }
   }
 }
@@ -240,6 +233,11 @@ void handleUART() {
 
 
 
+
+
+
+
+// ======== Setup ========
 void setup() {
   delay(1000);
   Serial.begin(115200);
@@ -252,7 +250,46 @@ void setup() {
 
 
 
+
+
   
+  // --- BMP ---
+  Wire.begin(BMP_I2C_SDA, BMP_I2C_SCL);
+  if(!bmp.begin_I2C()){ Serial.println("BMP not found!"); while(1); }
+  bmp.setTemperatureOversampling(BMP3_OVERSAMPLING_8X);
+  bmp.setPressureOversampling(BMP3_OVERSAMPLING_4X);
+  bmp.setIIRFilterCoeff(BMP3_IIR_FILTER_COEFF_3);
+  bmp.setOutputDataRate(BMP3_ODR_50_HZ);
+
+
+
+
+
+
+
+
+
+
+
+  
+  // BMP Calibration
+  for(int i=0;i<100;i++){ bmp.performReading(); delay(20); }
+  double sum=0;
+  for(int i=0;i<100;i++){ if(bmp.performReading()) sum+=bmp.readAltitude(SEALEVELPRESSURE_HPA); }
+  calib = sum/100.0;
+  Serial.print("BMP Calibration done: "); Serial.println(calib);
+
+
+
+
+
+
+
+
+
+
+  
+  // --- BNO ---
   WireBNO.begin(22,21);
   WireBNO.setClock(400000);
   if(!myIMU.begin(BNO08X_ADDR, WireBNO, BNO08X_INT, BNO08X_RST)){
@@ -267,6 +304,9 @@ void setup() {
 
 
 
+
+
+  
   // --- Motors ---
   right.setPeriodHertz(50); right.attach(pinright,PWM_MIN,PWM_MAX);
   left.setPeriodHertz(50); left.attach(pinleft,PWM_MIN,PWM_MAX);
@@ -278,7 +318,12 @@ void setup() {
 
 
 
+
+
+
+
   
+  // ESC calibration
   right_speed(PWM_MAX); left_speed(PWM_MAX); rightb_speed(PWM_MAX); leftb_speed(PWM_MAX);
   delay(1500);
   right_speed(PWM_MIN); left_speed(PWM_MIN); rightb_speed(PWM_MIN); leftb_speed(PWM_MIN);
@@ -296,18 +341,27 @@ double time_started = 0.0;
 
 
 
+
+
+
+
 // ======== Loop ========
 void loop() {
   unsigned long nowMicros = micros();
-  if (nowMicros - lastLoopMicros < loopTimeMicros) return;
-  // hesapla dt güvenli
+  if(nowMicros - lastLoopMicros < loopTimeMicros) return;
+
   unsigned long elapsed = nowMicros - lastLoopMicros;
   lastLoopMicros = nowMicros;
   dt = elapsed / 1000000.0;
-  if (dt <= 0) dt = 0.001;
+  if(dt<=0) dt=0.001;
 
   float currentMillis = (millis() - currentMillis_cal);
   time_started = currentMillis * 0.001;
+
+
+
+
+
 
 
 
@@ -319,13 +373,6 @@ void loop() {
 
 
 
-  
-
-
-  
-  if (time_started > 20.0){
-    goal_speed = 1000;
-  }
 
 
 
@@ -333,16 +380,24 @@ void loop() {
 
 
   
+  if(time_started>20.0) goal_speed=1000;
 
 
-  // --- BNO Orientation & Accel (raw) ---
+
+
+
+
+
+
+  
+  // --- BNO Orientation ---
   float ax=0, ay=0, az=0;
   if(myIMU.wasReset()) setReports();
   if(myIMU.getSensorEvent()){
     if(myIMU.getSensorEventID()==SENSOR_REPORTID_ROTATION_VECTOR){
-      roll_raw  = myIMU.getRoll()  * 180.0/PI -1.62;
-      pitch_raw = myIMU.getPitch() * 180.0/PI - 0.57;
-      yaw_raw   = myIMU.getYaw()   * 180.0/PI;
+      roll_raw  = myIMU.getRoll()*180.0/PI -1.62;
+      pitch_raw = myIMU.getPitch()*180.0/PI -0.57;
+      yaw_raw   = myIMU.getYaw()*180.0/PI;
     } else if(myIMU.getSensorEventID()==SENSOR_REPORTID_ACCELEROMETER){
       ax = myIMU.getAccelX();
       ay = myIMU.getAccelY();
@@ -357,10 +412,17 @@ void loop() {
 
 
 
-  // --- Low-pass filter (simple exponential) ---
-  roll  = (roll  * (1.0 - LPF_ALPHA) + roll_raw  * LPF_ALPHA);
-  pitch = (pitch * (1.0 - LPF_ALPHA) + pitch_raw * LPF_ALPHA);
-  yaw   = yaw   * (1.0 - LPF_ALPHA) + yaw_raw   * LPF_ALPHA;
+
+  
+
+  // --- Low-pass filter ---
+  roll  = (roll  * (1-LPF_ALPHA) + roll_raw*LPF_ALPHA);
+  pitch = (pitch * (1-LPF_ALPHA) + pitch_raw*LPF_ALPHA);
+  yaw   = (yaw   * (1-LPF_ALPHA) + yaw_raw*LPF_ALPHA);
+
+
+
+
 
 
 
@@ -368,17 +430,13 @@ void loop() {
 
 
   
-
-
-
-  // --- PID Control (roll / pitch) ---
+  // --- PID roll/pitch ---
   float x_error = x_fin_angle - roll;
-  x_integral += x_error * dt;
-  // anti-windup
-  if (x_integral > INTEGRAL_LIMIT) x_integral = INTEGRAL_LIMIT;
-  if (x_integral < -INTEGRAL_LIMIT) x_integral = -INTEGRAL_LIMIT;
-  float x_derivative = (x_error - x_previousError) / dt;
-  float x_output = kp * x_error + ki * x_integral + kd * x_derivative;
+  x_integral += x_error*dt;
+  if(x_integral>INTEGRAL_LIMIT) x_integral=INTEGRAL_LIMIT;
+  if(x_integral<-INTEGRAL_LIMIT) x_integral=-INTEGRAL_LIMIT;
+  float x_derivative = (x_error - x_previousError)/dt;
+  float x_output = kp*x_error + ki*x_integral + kd*x_derivative;
   x_previousError = x_error;
 
 
@@ -388,16 +446,15 @@ void loop() {
 
 
 
+
+
   
-
-
-
   float y_error = y_fin_angle - pitch;
-  y_integral += y_error * dt;
-  if (y_integral > INTEGRAL_LIMIT) y_integral = INTEGRAL_LIMIT;
-  if (y_integral < -INTEGRAL_LIMIT) y_integral = -INTEGRAL_LIMIT;
-  float y_derivative = (y_error - y_previousError) / dt;
-  float y_output = kp * y_error + ki * y_integral + kd * y_derivative;
+  y_integral += y_error*dt;
+  if(y_integral>INTEGRAL_LIMIT) y_integral=INTEGRAL_LIMIT;
+  if(y_integral<-INTEGRAL_LIMIT) y_integral=-INTEGRAL_LIMIT;
+  float y_derivative = (y_error - y_previousError)/dt;
+  float y_output = kp*y_error + ki*y_integral + kd*y_derivative;
   y_previousError = y_error;
 
 
@@ -405,67 +462,101 @@ void loop() {
 
 
 
-    // --- PID Control (yaw) ---
+
+
+
+
+  
+  // --- PID yaw ---
   float z_error = z_fin_angle - yaw;
-  z_integral += z_error * dt;
-  if (z_integral > INTEGRAL_LIMIT) z_integral = INTEGRAL_LIMIT;
-  if (z_integral < -INTEGRAL_LIMIT) z_integral = -INTEGRAL_LIMIT;
-  float z_derivative = (z_error - z_previousError) / dt;
-  float z_output = z_kp * z_error + z_ki * z_integral + z_kd * z_derivative;
+  z_integral += z_error*dt;
+  if(z_integral>INTEGRAL_LIMIT) z_integral=INTEGRAL_LIMIT;
+  if(z_integral<-INTEGRAL_LIMIT) z_integral=-INTEGRAL_LIMIT;
+  float z_derivative = (z_error - z_previousError)/dt;
+  float z_output = z_kp*z_error + z_ki*z_integral + z_kd*z_derivative;
   z_previousError = z_error;
 
 
-  
-
-
-  
 
 
 
-  // --- smooth throttle ramp (acc) ---
-  if (goal_speed > speed) speed += acc;
-  if (goal_speed < speed) speed -= acc;
-  // clamp speed for safety
-  if (speed > PWM_MAX) speed = PWM_MAX;
-  if (speed < PWM_MIN) speed = PWM_MIN;
 
 
 
 
 
   
+  // --- Altitude PID ---
+  float h_error = goal_alt - alt_filtered;
+  h_integral += h_error*dt;
+  if(h_integral>INTEGRAL_LIMIT) h_integral=INTEGRAL_LIMIT;
+  if(h_integral<-INTEGRAL_LIMIT) h_integral=-INTEGRAL_LIMIT;
+  float h_derivative = (h_error - h_previousError)/dt;
+  h_output = h_kp*h_error + h_ki*h_integral + h_kd*h_derivative;
+  h_previousError = h_error;
 
 
 
 
-  // --- Motor mixing (X config) ---
-  int rightPWM  = (int)constrain(speed + (-x_output - y_output - z_output), PWM_MIN, PWM_MAX);
-  int leftPWM   = (int)constrain(speed + (+x_output - y_output + z_output), PWM_MIN, PWM_MAX);
-  int rightbPWM = (int)constrain(speed + (-x_output + y_output - z_output), PWM_MIN, PWM_MAX);
-  int leftbPWM  = (int)constrain(speed + (+x_output + y_output + z_output), PWM_MIN, PWM_MAX);
 
+
+
+
+
+
+
+  
+  // --- BMP Altitude ---
+  if(bmp.performReading()){
+    alt_raw = bmp.readAltitude(SEALEVELPRESSURE_HPA) - calib;
+    alt_filtered = alt_filtered*(1-ALT_LPF_ALPHA) + alt_raw*ALT_LPF_ALPHA;
+  }
+
+
+
+
+
+
+
+
+
+
+  
+  // --- smooth throttle ---
+  if(goal_speed>speed) speed+=acc;
+  if(goal_speed<speed) speed-=acc;
+  if(speed>PWM_MAX) speed=PWM_MAX;
+  if(speed<PWM_MIN) speed=PWM_MIN;
+
+
+
+
+
+
+
+
+
+
+  
+  // --- Motor mixing ---
+  int rightPWM  = (int)constrain(speed + (-x_output - y_output - z_output + h_output), PWM_MIN, PWM_MAX);
+  int leftPWM   = (int)constrain(speed + (+x_output - y_output + z_output + h_output), PWM_MIN, PWM_MAX);
+  int rightbPWM = (int)constrain(speed + (-x_output + y_output - z_output + h_output), PWM_MIN, PWM_MAX);
+  int leftbPWM  = (int)constrain(speed + (+x_output + y_output + z_output + h_output), PWM_MIN, PWM_MAX);
+
+
+
+
+
+
+
+
+
+
+  
 
   right_speed(rightPWM);
   left_speed(leftPWM);
   rightb_speed(rightbPWM);
   leftb_speed(leftbPWM);
-
-
-
-
-
-
-
-
-  
-
-
-  
-  /*Serial.print("dt: "); Serial.print(dt, 4);
-  Serial.print(" | R: "); Serial.print(roll,2);
-  Serial.print(" P: "); Serial.print(pitch,2);
-  Serial.print(" | outX: "); Serial.print(x_output,2);
-  Serial.print(" outY: "); Serial.print(y_output,2);
-  Serial.print(" | spd: "); Serial.print(speed);
-  Serial.print(" goal: "); Serial.println(goal_speed);*/
 }
