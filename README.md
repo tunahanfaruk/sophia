@@ -43,12 +43,6 @@ if you want to get more detail about sophia you can visit [Website of Sophia](ht
 |ESP32 NODMCU|
 |jetson nano|
 |sim808|
-  #### 3D Models
-  * Geognesic dome
-  * Holder
-  * Holder v2
-  * mid
-  * PID tuneing platform
 
 
 ### Software Stack
