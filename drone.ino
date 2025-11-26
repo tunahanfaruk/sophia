@@ -125,6 +125,54 @@ void setReports(){
   else Serial.println("Could not enable accelerometer");
 }
 
+
+
+
+void handleUART() {
+  if (Serial.available()) {
+    char cmd = Serial.read();
+
+    switch(cmd) {
+      case 'w':
+        goal_speed += 50;
+        if (goal_speed > PWM_MAX) goal_speed = PWM_MAX;
+        break;
+
+      case 's':
+        goal_speed -= 50;
+        if (goal_speed < PWM_MIN) goal_speed = PWM_MIN;
+        break;
+
+      case 'a':
+        x_fin_angle -= 3.0;
+        break;
+
+      case 'd': 
+        x_fin_angle += 3.0;
+        break;
+
+      case 'q':
+        y_fin_angle += 2.0;
+        if (y_fin_angle > 30.0) y_fin_angle = 30.0;
+        break;
+
+      case 'e':  // aşağı
+        y_fin_angle -= 2.0;
+        if (y_fin_angle < -30.0) y_fin_angle = -30.0;
+        break;
+
+      case 'x':  // dur
+        goal_speed = PWM_MIN;
+        x_fin_angle = 0;
+        y_fin_angle = 0;
+        break;
+    }
+  }
+}
+
+
+
+
 void setup() {
   delay(1000);
   Serial.begin(115200);
@@ -196,7 +244,7 @@ void loop() {
 
 
 
-
+  handleUART();
 
 
 
