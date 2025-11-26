@@ -30,26 +30,19 @@ if you want to get more detail about sophia you can visit [Website of Sophia](ht
 ### Features
 * 🔥 Forest fire detection
 * 🔫 Gun and knife detection
+* natural disaster dedection
+* trash dedection
 * 🚀 4 kg thrust
-* 🕐 Flight controller loop time: ~5 ms
+* 🕐 Flight controller loop time: ~2.2 ms
 
 ### Hardware Components
 | components |
 |:----|
 |BMP390|
 |BNO08X|
-|A2212 13T 1000KV|
-|10 inch propeller|
-|EC5|
-|30A ESC|
 |ESP32 NODMCU|
-|F450 frame|
-|LDR|
-|2800 mAh 3S 40C LiPo|
-|Piezo disk|
-|Proto PCB|
-|5A voltage regulator|
-|12AWG silicone wire|
+|jetson nano|
+|sim808|
   #### 3D Models
   * Geognesic dome
   * Holder
@@ -57,21 +50,8 @@ if you want to get more detail about sophia you can visit [Website of Sophia](ht
   * mid
   * PID tuneing platform
 
-### Future Hardware Upgrades:
-* Jetson Nano (onboard ML inference)
-* SIM808 (GPS + GSM)
-* Slamtec C1 (LiDAR sensor)
 
 ### Software Stack
 * Flight Controller: C++ 
 * Machine Learning: PyTorch
 * FreeCAD
-
-### Performance Metrics
-* Single loop execution: ~5 ms
-
-### Contributing
-PRs and issues are welcome! Let’s make Sophia smarter together.  
-
-    
-Star this repo ⭐ if you like it!  
